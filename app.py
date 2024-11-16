@@ -11,8 +11,8 @@ def load_data(filepath):
     return pd.read_csv(filepath)
 
 # Load the dataset
-data = load_data(r"C:\Users\asus\OneDrive\Desktop\Masai School all Notes\Unit 2 PY\Unit2ProjectBlackmoney\Big_Black_Money_Dataset.csv"
-)  # Replace with your dataset file path
+data = load_data(r"https://github.com/ankitsengar1/first_Project/blob/main/Big_Black_Money_Dataset.csv")  
+                 # Replace with your dataset file path
 
 # Sidebar for Filters
 st.sidebar.header("Dashboard Controls")
