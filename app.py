@@ -1,347 +1,103 @@
-# Import required libraries
 import streamlit as st
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
-import plotly.graph_objects as go
+import seaborn as sns
+st.sidebar.image("Black_Money.png",use_container_width=True)
 
-# Load your dataset
+# Caching the data using st.cache_data
 @st.cache_data
-def load_data():
-    # Replace 'your_data.csv' with the actual file path
-    data = pd.read_csv(r"C:\Users\asus\OneDrive\Desktop\Masai School all Notes\Unit 2 PY\Unit2ProjectBlackmoney\Big_Black_Money_Dataset.csv")
-    return data
+def load_data(filepath):
+    """Load data from a CSV file."""
+    return pd.read_csv(filepath)
 
-df = load_data()
+# Load the dataset
+data = load_data(r"C:\Users\asus\OneDrive\Desktop\Masai School all Notes\Unit 2 PY\Unit2ProjectBlackmoney\Big_Black_Money_Dataset.csv"
+)  # Replace with your dataset file path
 
-# Streamlit app layout
-st.title("Transaction Analysis Dashboard")
-st.sidebar.title("Filters")
+# Sidebar for Filters
+st.sidebar.header("Dashboard Controls")
 
-# Display the dataset
-if st.sidebar.checkbox("Show Raw Data"):
-    st.subheader("Raw Data")
-    st.write(df)
-
-# Summary statistics
-st.subheader("Summary Statistics")
-st.write(df.describe())
-
-
-
-
-
-
-
-
-st.subheader("Top 5 Countries by Transaction Amount")
-# Get top 5 countries by transaction amount
-top_countries = df.groupby('Country')['Amount (USD)'].sum().nlargest(5)
-# Set up the color palette and style
-sns.set(style="whitegrid")
-plt.figure(figsize=(10, 6))
-colors = sns.color_palette("viridis", len(top_countries))  # Choose a vibrant color palette
-
-# Create the bar plot
-ax = sns.barplot(
-    x=top_countries.index, 
-    y=top_countries.values, 
-    palette=colors
-)
-ax.set_title("Top 5 Countries by Transaction Amount", fontsize=16)
-ax.set_xlabel("Country", fontsize=14)
-ax.set_ylabel("Total Transaction Amount (USD)", fontsize=14)
-
-# Add values on top of each bar for clarity
-for index, value in enumerate(top_countries.values):
-    ax.text(index, value + 0.05 * value, f"${value:,.2f}", ha="center", fontsize=12, color="black")
-
-# Display the chart in Streamlit
-st.pyplot(plt)
-
-
-
-
-
-
-
-# Distribution of Transaction Types - Enhanced Visualization
-st.subheader("Distribution of Transaction Types")
-
-# Count the transaction types
-transaction_type_counts = df['Transaction Type'].value_counts()
-
-# Set up color palette and style
-sns.set(style="whitegrid")  # Clean grid background
-plt.figure(figsize=(10, 6))
-colors = sns.color_palette("Set2")  # A colorful, pastel palette
-
-# Create the bar plot
-fig, ax = plt.subplots()
-sns.barplot(
-    x=transaction_type_counts.index, 
-    y=transaction_type_counts.values, 
-    palette=colors, 
-    ax=ax
+# User Input Options
+selected_column = st.sidebar.selectbox(
+    "Select Column for Analysis", data.columns
 )
 
-# Add titles and labels
-ax.set_title("Distribution of Transaction Types", fontsize=18, color="darkblue", weight="bold")
-ax.set_xlabel("Transaction Type", fontsize=14, color="gray")
-ax.set_ylabel("Count", fontsize=14, color="gray")
+# Ensure the selected column is numeric for the slider
+if pd.api.types.is_numeric_dtype(data[selected_column]):
+    numeric_filter = st.sidebar.slider(
+        "Filter Numeric Range",
+        min_value=float(data[selected_column].min()),
+        max_value=float(data[selected_column].max()),
+        value=(float(data[selected_column].min()), float(data[selected_column].max())),
+    )
+else:
+    numeric_filter = None
+    st.sidebar.write("The selected column is not numeric. Numeric filters are disabled.")
 
-# Customize ticks and grids
-ax.tick_params(axis='x', rotation=45, colors="darkgray", labelsize=12)
-ax.tick_params(axis='y', colors="darkgray", labelsize=12)
-ax.grid(color='lightgray', linestyle='--', linewidth=0.5)
+# Main Dashboard
+st.title("Interactive Black Money Transactions Dashboard")
 
-# Display values on top of bars
-for p in ax.patches:
-    ax.annotate(f'{int(p.get_height())}', 
-                (p.get_x() + p.get_width() / 2., p.get_height()), 
-                ha='center', va='center', 
-                xytext=(0, 10), 
-                textcoords='offset points', 
-                color="black", fontsize=12, weight="bold")
+# Display Filtered Data
+st.subheader("Filtered Dataset")
 
-# Display the chart in Streamlit
-st.pyplot(fig)
+if numeric_filter:
+    # Apply numeric filtering if the column is numeric
+    filtered_data = data[
+        (data[selected_column] >= numeric_filter[0]) & (data[selected_column] <= numeric_filter[1])
+    ]
+else:
+    # Display all data if no numeric filter is applicable
+    filtered_data = data
 
+st.write(filtered_data)
 
-
-
-
-
-
-# Risk Score Analysis
-risk_threshold = st.sidebar.slider("Select Risk Score Threshold", 0, 100, 80)
-high_risk_transactions = df[df['Money Laundering Risk Score'] > risk_threshold]
-st.subheader(f"High-Risk Transactions (Score > {risk_threshold})")
-st.write(high_risk_transactions)
-
-st.subheader("Average Shell Companies Involved by Industry")
-
-# Calculate the average shell companies involved by industry
-shell_by_industry = df.groupby('Industry')['Shell Companies Involved'].mean().sort_values()
-
-# Set up color palette and style
-sns.set(style="whitegrid")
-plt.figure(figsize=(12, 8))
-colors = sns.color_palette("Spectral", len(shell_by_industry))  # Colorful, contrasting palette
-
-# Create the bar plot
-fig, ax = plt.subplots()
-sns.barplot(
-    x=shell_by_industry.values, 
-    y=shell_by_industry.index, 
-    palette=colors, 
-    ax=ax
+# Generate Chart Based on User Input
+st.subheader("Dynamic Visualization")
+selected_chart = st.sidebar.radio(
+    "Select Chart Type",
+    ["Bar Chart", "Line Chart", "Scatter Plot", "Pie Chart"]
 )
 
-# Add titles and labels
-ax.set_title("Average Shell Companies Involved by Industry", fontsize=18, color="darkblue", weight="bold")
-ax.set_xlabel("Average Shell Companies Involved", fontsize=14, color="gray")
-ax.set_ylabel("Industry", fontsize=14, color="gray")
+if selected_chart == "Bar Chart":
+    fig, ax = plt.subplots()
+    sns.countplot(data=filtered_data, x=selected_column, ax=ax)
+    st.pyplot(fig)
 
-# Customize ticks and grid
-ax.tick_params(axis='x', colors="darkgray", labelsize=12)
-ax.tick_params(axis='y', colors="darkgray", labelsize=12)
-ax.grid(color='lightgray', linestyle='--', linewidth=0.5)
+elif selected_chart == "Line Chart":
+    if pd.api.types.is_numeric_dtype(data[selected_column]):
+        fig, ax = plt.subplots()
+        filtered_data.groupby(selected_column).size().plot(kind='line', ax=ax)
+        st.pyplot(fig)
+    else:
+        st.error("Line chart requires a numeric column.")
 
-# Display values next to each bar for clarity
-for p in ax.patches:
-    ax.annotate(f'{p.get_width():.2f}', 
-                (p.get_width(), p.get_y() + p.get_height() / 2),
-                ha='left', va='center', 
-                xytext=(5, 0), 
-                textcoords='offset points', 
-                color="black", fontsize=12, weight="bold")
+elif selected_chart == "Scatter Plot":
+    st.sidebar.write("Scatter plots require two numeric columns.")
+    numeric_columns = data.select_dtypes(include='number').columns
+    col_x = st.sidebar.selectbox("Select X-Axis", numeric_columns)
+    col_y = st.sidebar.selectbox("Select Y-Axis", numeric_columns)
+    fig, ax = plt.subplots()
+    ax.scatter(filtered_data[col_x], filtered_data[col_y])
+    ax.set_xlabel(col_x)
+    ax.set_ylabel(col_y)
+    st.pyplot(fig)
 
-# Display the chart in Streamlit
-st.pyplot(fig)
+elif selected_chart == "Pie Chart":
+    fig, ax = plt.subplots()
+    filtered_data[selected_column].value_counts().plot(kind='pie', autopct='%1.1f%%', ax=ax)
+    ax.set_ylabel('')
+    st.pyplot(fig)
 
+# Additional Sidebar Features
+st.sidebar.subheader("Additional Options")
+if st.sidebar.checkbox("Show Summary Statistics"):
+    st.subheader("Summary Statistics")
+    st.write(filtered_data.describe())
 
+if st.sidebar.checkbox("Show Original Dataset"):
+    st.subheader("Original Dataset")
+    st.write(data)
 
-
-
-
-
-
-# Monthly Transaction Trend - Enhanced Visualization
-st.subheader("Monthly Transaction Trend")
-
-# Convert the date to datetime and extract monthly data
-df['Date of Transaction'] = pd.to_datetime(df['Date of Transaction'])
-monthly_trend = df.groupby(df['Date of Transaction'].dt.to_period('M'))['Amount (USD)'].sum()
-monthly_trend.index = monthly_trend.index.to_timestamp()  # Convert PeriodIndex to Timestamp for plotting
-
-# Set up color palette and style
-sns.set(style="whitegrid")
-plt.figure(figsize=(12, 6))
-fig, ax = plt.subplots()
-
-# Create the line plot
-sns.lineplot(
-    x=monthly_trend.index, 
-    y=monthly_trend.values, 
-    color="dodgerblue", 
-    marker="o", 
-    markersize=8, 
-    linewidth=2, 
-    ax=ax
-)
-
-# Add titles and labels
-ax.set_title("Monthly Transaction Trend", fontsize=18, color="darkblue", weight="bold")
-ax.set_xlabel("Month", fontsize=14, color="gray")
-ax.set_ylabel("Total Transaction Amount (USD)", fontsize=14, color="gray")
-
-# Customize ticks and grid
-ax.tick_params(axis='x', rotation=45, colors="darkgray", labelsize=10)
-ax.tick_params(axis='y', colors="darkgray", labelsize=12)
-ax.grid(color='lightgray', linestyle='--', linewidth=0.5)
-
-# Display values on data points
-for x, y in zip(monthly_trend.index, monthly_trend.values):
-    ax.text(x, y, f'{y:,.0f}', ha='center', va='bottom', fontsize=10, color="black")
-
-# Display the chart in Streamlit
-st.pyplot(fig)
-
-
-
-
-
-# Transactions Involving Tax Haven Countries - Enhanced Design
-st.subheader("Transactions Involving Tax Haven Countries")
-
-# Filter transactions involving tax haven countries
-tax_haven_transactions = df[df['Tax Haven Country'] != 'None']
-
-# Calculate the average transaction amount in tax haven countries
-avg_tax_haven_amount = tax_haven_transactions['Amount (USD)'].mean()
-
-# Display average transaction amount with custom styling
-st.markdown(
-    f"<h3 style='text-align: center; color: #2ca02c; font-weight: bold;'>"
-    f"Average Transaction Amount in Tax Haven Countries: ${avg_tax_haven_amount:,.2f}"
-    "</h3>", 
-    unsafe_allow_html=True
-)
-
-# Create a progress bar for average transaction amount
-progress_bar = st.progress(0)  # Initialize progress bar
-max_amount = df['Amount (USD)'].max()  # Max possible value for progress bar
-progress_bar.progress(min(avg_tax_haven_amount / max_amount, 1.0))  # Update progress based on avg value
-
-# Optional: Create a pie chart showing the proportion of transactions involving tax haven countries
-total_transactions = len(df)
-tax_haven_count = len(tax_haven_transactions)
-
-# Create a pie chart to visualize the proportion of transactions involving tax haven countries
-fig = go.Figure(go.Pie(
-    labels=["Involving Tax Haven", "Not Involving Tax Haven"],
-    values=[tax_haven_count, total_transactions - tax_haven_count],
-    hole=0.4,  # Creates a donut chart
-    hoverinfo="label+percent",
-    textinfo="percent+label",
-    marker=dict(colors=["#2ca02c", "#ff7f0e"])
-))
-
-fig.update_layout(
-    title="Proportion of Transactions Involving Tax Haven Countries",
-    title_x=0.5,
-    title_y=0.95,
-    showlegend=False
-)
-
-# Display the donut chart
-st.plotly_chart(fig)
-
-
-
-
-# Percentage of Transactions Reported by Authority - Enhanced Design
-st.subheader("Percentage of Transactions Reported by Authority")
-
-# Calculate the percentage of transactions reported by authority
-reported_percentage = df['Reported by Authority'].mean() * 100
-
-# Create a Progress Bar for better visualization
-progress_bar = st.progress(0)  # Initialize progress bar
-progress_bar.progress(reported_percentage / 100)  # Set progress based on percentage
-
-# Display percentage with a custom styled message
-st.markdown(
-    f"<h3 style='text-align: center; color: #1f77b4; font-weight: bold;'>"
-    f"{reported_percentage:.2f}% of transactions are reported by authority."
-    "</h3>", 
-    unsafe_allow_html=True
-)
-
-# Optionally, add a donut chart for a more graphical representation using Plotly
-fig = go.Figure(go.Pie(
-    labels=["Reported", "Not Reported"],
-    values=[reported_percentage, 100 - reported_percentage],
-    hole=0.4,  # Creates a donut chart
-    hoverinfo="label+percent",
-    textinfo="percent+label",
-    marker=dict(colors=["#1f77b4", "#d62728"])
-))
-
-fig.update_layout(
-    title="Transaction Reporting by Authority",
-    title_x=0.5,
-    title_y=0.95,
-    showlegend=False
-)
-
-# Display the donut chart
-st.plotly_chart(fig)
-
-
-
-
-
-# Top Financial Institutions by Transaction Volume - Enhanced Visualization
-st.subheader("Top Financial Institutions by Transaction Volume")
-
-# Calculate the top financial institutions by transaction volume
-top_institutions = df.groupby('Financial Institution')['Amount (USD)'].sum().nlargest(5)
-
-# Set up color palette and style
-sns.set(style="whitegrid")
-plt.figure(figsize=(10, 6))
-colors = sns.color_palette("coolwarm", len(top_institutions))  # Cool-to-warm color gradient
-
-# Create the bar plot
-fig, ax = plt.subplots()
-sns.barplot(
-    x=top_institutions.values, 
-    y=top_institutions.index, 
-    palette=colors, 
-    ax=ax
-)
-
-# Add titles and labels
-ax.set_title("Top Financial Institutions by Transaction Volume", fontsize=18, color="darkblue", weight="bold")
-ax.set_xlabel("Total Transaction Volume (USD)", fontsize=14, color="gray")
-ax.set_ylabel("Financial Institution", fontsize=14, color="gray")
-
-# Customize ticks and grid
-ax.tick_params(axis='x', colors="darkgray", labelsize=12)
-ax.tick_params(axis='y', colors="darkgray", labelsize=12)
-ax.grid(color='lightgray', linestyle='--', linewidth=0.5)
-
-# Display values next to each bar for clarity
-for p in ax.patches:
-    ax.annotate(f'${p.get_width():,.0f}', 
-                (p.get_width(), p.get_y() + p.get_height() / 2), 
-                ha='left', va='center', 
-                xytext=(5, 0), 
-                textcoords='offset points', 
-                color="black", fontsize=12, weight="bold")
-
-# Display the chart in Streamlit
-st.pyplot(fig)
-
+# Footer Section
+st.sidebar.markdown("---")
+st.sidebar.write("Developed by Your Name")
